@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><intel_fpga_monitor_program_project version="1.0">
+    <architecture>Nios II</architecture>
+    <system>
+        <sample_system_title>DE1-SoC Computer for Nios II</sample_system_title>
+        <board>DE1-SoC</board>
+        <cable>DE-SoC [USB-1]</cable>
+        <processor>Nios2</processor>
+        <reset_processor_during_load>true</reset_processor_during_load>
+        <terminal>JTAG_UART</terminal>
+    </system>
+    <program>
+        <type>C Program</type>
+        <source_files>
+            <source_file filepath="true">terminal.c</source_file>
+        </source_files>
+        <options>
+            <compiler_flags>-g -O1 -ffunction-sections -fverbose-asm -fno-inline -mno-cache-volatile</compiler_flags>
+            <emulate_unimpl_instructions>true</emulate_unimpl_instructions>
+            <use_small_c_library>false</use_small_c_library>
+        </options>
+        <linker_sections type="Basic">
+            <linker_section name=".text">
+                <memory_device>SDRAM.s1</memory_device>
+                <base_address>0x00000000</base_address>
+                <end_address>0x03FFFFFF</end_address>
+                <required_section/>
+            </linker_section>
+        </linker_sections>
+    </program>
+</intel_fpga_monitor_program_project>
