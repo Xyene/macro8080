@@ -1,0 +1,4 @@
+#!/bin/bash
+
+python make_rom.py 0xe000=rom/8kBas_e0.bin 0xe800=rom/8kBas_e8.bin 0xf000=rom/8kBas_f0.bin 0xf800=rom/8kBas_f8.bin --out memory_basic.h
+
