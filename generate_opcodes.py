@@ -52,9 +52,10 @@ for op in ops:
     lookup_table.append('&&%s' % '_'.join(op))
 
     func_defs.append('''#define %s(%s) \\
+    printf("%s unimplemented\\n"); \\
     assert(false); // TODO \\
 DONE
-''' % (name, ', '.join(map(lambda (i, d): trans[len(d) == 2][i], enumerate(data)))))
+''' % (name, ', '.join(map(lambda (i, d): trans[len(d) == 2][i], enumerate(data))), name))
 
 with open('opcode_defs.h', 'w') as o:
     done = set()
