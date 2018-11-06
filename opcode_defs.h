@@ -1,116 +1,151 @@
+#include "terminal.h"
+
+#define assert(_) 	return;
+
+static uint8_t parity_table[] = {
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0,
+	1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1
+};
+
+#define F_SZP(X) \
+	F_S = X & 0x80; \
+	F_Z = X == 0; \
+	F_P = parity_table[X];
+
+#define PUSH_STACK_8(val) \
+	memory[--SP] = val; \
+
+#define PUSH_STACK_16(val) \
+	PUSH_STACK_8((val) >> 8); \
+	PUSH_STACK_8((val) & 0xFF);
+
+#define POP_STACK_8() \
+	(memory[SP++])
+
+#define POP_STACK_16() \
+	(((uint16_t) POP_STACK_8()) | (((uint16_t) POP_STACK_8()) << 8))
+
 #define NOP() \
-    printf("NOP unimplemented\n"); \
-    assert(false); // TODO \
+	; \
 DONE
 
-#define LXI(WX, Y) \
-    printf("LXI unimplemented\n"); \
-    assert(false); // TODO \
+#define LXI(WX, d16) \
+    WX = d16; \
 DONE
 
-#define STAX(X) \
-    printf("STAX unimplemented\n"); \
-    assert(false); // TODO \
+#define STAX(WX) \
+    memory[WX] = A; \
 DONE
 
 #define INX(WX) \
-    printf("INX unimplemented\n"); \
-    assert(false); // TODO \
+    WX++; \
 DONE
 
 #define INR(X) \
-    printf("INR unimplemented\n"); \
-    assert(false); // TODO \
+  F_A = (X & 0xF) == 0xF; \
+	X++; \
+	F_SZP(X); \
 DONE
 
 #define DCR(X) \
-    printf("DCR unimplemented\n"); \
-    assert(false); // TODO \
+  F_A = !((X & 0xF) == 0); \
+	X--; \
+	F_SZP(X); \
 DONE
 
-#define MVI(X, Y) \
-    printf("MVI unimplemented\n"); \
-    assert(false); // TODO \
+#define MVI(X, d8) \
+    X = d8; \
 DONE
 
 #define RLC() \
-    printf("RLC unimplemented\n"); \
-    assert(false); // TODO \
+   temp8 = A & 0x80; \
+   A <<= 1; \
+   A |= !!temp8; \
+   F_C = temp8; \
 DONE
 
 #define DAD(WX) \
-    printf("DAD unimplemented\n"); \
-    assert(false); // TODO \
+	F_C = !!(((((uint32_t) HL) & 0xFFFF) + WX) & 0x10000); \
+  HL += WX; \
 DONE
 
-#define LDAX(X) \
-    printf("LDAX unimplemented\n"); \
-    assert(false); // TODO \
+#define LDAX(WX) \
+    A = memory[WX]; \
 DONE
 
 #define DCX(WX) \
-    printf("DCX unimplemented\n"); \
-    assert(false); // TODO \
+    WX--; \
 DONE
 
 #define RRC() \
-    printf("RRC unimplemented\n"); \
-    assert(false); // TODO \
+    temp8 = A & 0x1; \
+	A >>= 1; \
+	A |= temp8 << 7; \
+	F_C = temp8; \
 DONE
 
 #define RAL() \
-    printf("RAL unimplemented\n"); \
-    assert(false); // TODO \
+  temp8 = !!F_C; \
+	F_C = A & 0x80; \
+	A <<= 1; \
+	A |= temp8; \
 DONE
 
 #define RAR() \
-    printf("RAR unimplemented\n"); \
-    assert(false); // TODO \
+  temp8 = !!F_C; \
+	F_C = A & 0x1; \
+	A >>= 1; \
+	A |= temp8 << 7; \
 DONE
 
-#define SHLD(X) \
-    printf("SHLD unimplemented\n"); \
-    assert(false); // TODO \
+#define SHLD(a16) \
+	temp16 = a16; \
+  memory[temp16] = L; \
+	memory[temp16 + 1] = H; \
 DONE
 
-#define DAA() \
-    printf("DAA unimplemented\n"); \
-    assert(false); // TODO \
-DONE
-
-#define LHLD(X) \
-    printf("LHLD unimplemented\n"); \
-    assert(false); // TODO \
+#define LHLD(a16) \
+	temp16 = a16; \
+  L = memory[temp16]; \
+	H = memory[temp16 + 1]; \
 DONE
 
 #define CMA() \
-    printf("CMA unimplemented\n"); \
-    assert(false); // TODO \
+    A = ~A; \
 DONE
 
-#define STA(X) \
-    printf("STA unimplemented\n"); \
-    assert(false); // TODO \
+#define STA(a16) \
+    memory[a16] = A; \
 DONE
 
 #define STC() \
-    printf("STC unimplemented\n"); \
-    assert(false); // TODO \
+    F_C = 1; \
 DONE
 
-#define LDA(X) \
-    printf("LDA unimplemented\n"); \
-    assert(false); // TODO \
+#define LDA(a16) \
+	A = memory[a16]; \
 DONE
 
 #define CMC() \
-    printf("CMC unimplemented\n"); \
-    assert(false); // TODO \
+    F_C = !F_C; \
 DONE
 
 #define MOV(X, Y) \
-    printf("MOV unimplemented\n"); \
-    assert(false); // TODO \
+    X = Y; \
 DONE
 
 #define HLT() \
@@ -118,273 +153,340 @@ DONE
     assert(false); // TODO \
 DONE
 
+// TODO: why is our original version of DO_ADD and DO_SUB wrong?
+/*
+	temp8 = by; \
+	uint16_t res16 = ((uint16_t) what) + temp8 + carry; \
+	F_C = !!(res16 & 0x100); \
+	F_A = ((what & 0xF) + (temp8 & 0xF) + carry) & 0x10; \
+	temp8 = res16; \
+	F_SZP(temp8); \
+	*/
+#define DO_ADD(what, _by, carry) \
+{ \
+	uint8_t by = _by; \
+	uint16_t carry_val = carry ? 1 : 0; \
+	uint16_t res16 = what + by + carry_val; \
+	uint8_t res8 = res16 & 0xFF; \
+	F_C = !!(res16 & 0x100); \
+	F_A = ((what & 0xF) + (by & 0xF) + carry_val) & 0x10; \
+	F_SZP(res8); \
+	temp8 = res8; \
+}
+
+#define DAA() \
+{ \
+  uint add = 0; \
+  if (((A & 0xF) > 9) || !!F_A) { \
+    add |= 0x06; \
+  } \
+  int carry = !!F_C; \
+  if (((A & 0xF0) > 0x90) || \
+      (((A & 0xF0) >= 0x90) && ((A & 0xF) > 9)) || !!F_C) { \
+    add |= 0x60; \
+    carry = 1; \
+  } \
+  DO_ADD(A, add, 0); \
+  A = temp8; \
+  F_C = carry; \
+} \
+DONE
+
 #define ADD(X) \
-    printf("ADD unimplemented\n"); \
-    assert(false); // TODO \
+	DO_ADD(A, X, 0) \
+	A = temp8; \
 DONE
 
 #define ADC(X) \
-    printf("ADC unimplemented\n"); \
-    assert(false); // TODO \
+    DO_ADD(A, X, !!F_C) \
+	A = temp8; \
 DONE
 
+/*
+
+	uint8_t by = ~_by; \
+	uint16_t res16 = ((uint16_t) what) + by + !borrow; \
+	temp8 = res16; \
+	F_C = !(res16 & 0x100); \
+	F_A = ((what & 0xF) + (by & 0xF) + !borrow) & 0x10; \
+	F_SZP(temp8); \
+
+	*/
+#define DO_SUB(minu, subt, borrow) \
+{ \
+	uint16_t subt_ones = (~subt) & 0xFF; \
+	\
+	uint16_t res16 = minu + subt_ones + (borrow ? 0 : 1); \
+	uint8_t res8 = res16 & 0xFF; \
+	\
+	F_C = !(res16 & 0x100); \
+	F_A = ((minu & 0xF) + (subt_ones & 0xF) + (borrow ? 0 : 1)) & 0x10; \
+	F_SZP(res8); \
+	temp8 = res8; \
+}
+
 #define SUB(X) \
-    printf("SUB unimplemented\n"); \
-    assert(false); // TODO \
+	DO_SUB(A, X, 0) \
+	A = temp8; \
 DONE
 
 #define SBB(X) \
-    printf("SBB unimplemented\n"); \
-    assert(false); // TODO \
+    DO_SUB(A, X, !!F_C) \
+	A = temp8; \
 DONE
 
 #define ANA(X) \
-    printf("ANA unimplemented\n"); \
-    assert(false); // TODO \
+    F_A = (X | A) & 0x08; \
+	A &= X; \
+	F_C = 0; \
+	F_SZP(A); \
 DONE
 
 #define XRA(X) \
-    printf("XRA unimplemented\n"); \
-    assert(false); // TODO \
+    A ^= X; \
+	F_C = F_A = 0; \
+	F_SZP(A); \
 DONE
 
 #define ORA(X) \
-    printf("ORA unimplemented\n"); \
-    assert(false); // TODO \
+    A |= X; \
+	F_A = F_C = 0; \
+	F_SZP(A); \
 DONE
 
 #define CMP(X) \
-    printf("CMP unimplemented\n"); \
-    assert(false); // TODO \
+	DO_SUB(A, X, 0) \
 DONE
 
 #define RNZ() \
-    printf("RNZ unimplemented\n"); \
-    assert(false); // TODO \
+    if (!F_Z) { PC = POP_STACK_16(); } \
 DONE
 
 #define POP(WX) \
-    printf("POP unimplemented\n"); \
-    assert(false); // TODO \
+    WX = POP_STACK_16(); \
 DONE
 
-#define JNZ(X) \
-    printf("JNZ unimplemented\n"); \
-    assert(false); // TODO \
+#define POP_PSW() \
+	temp8 = POP_STACK_8(); \
+	F_C = temp8 & (1 << 0); \
+	F_P = temp8 & (1 << 2); \
+	F_A = temp8 & (1 << 4); \
+	F_Z = temp8 & (1 << 6); \
+	F_S = temp8 & (1 << 7); \
+	A = POP_STACK_8(); \
 DONE
 
-#define JMP(X) \
-    printf("JMP unimplemented\n"); \
-    assert(false); // TODO \
+#define JNZ(a16) \
+    PC = !F_Z ? a16 : PC + 2; \
 DONE
 
-#define CNZ(X) \
-    printf("CNZ unimplemented\n"); \
-    assert(false); // TODO \
+#define JMP(a16) \
+    PC = a16; \
+DONE
+
+#define CNZ(a16) \
+    if (!F_Z) { CALL(a16) } else { PC += 2; } \
 DONE
 
 #define PUSH(WX) \
-    printf("PUSH unimplemented\n"); \
-    assert(false); // TODO \
+    PUSH_STACK_16(WX); \
 DONE
 
-#define ADI(X) \
-    printf("ADI unimplemented\n"); \
-    assert(false); // TODO \
+#define PUSH_PSW() \
+	PUSH_STACK_16(((uint16_t) F) | (((uint16_t) A) << 8)); \
 DONE
 
-#define RST(X) \
-    printf("RST unimplemented\n"); \
-    assert(false); // TODO \
+#define ADI(d8) \
+	DO_ADD(A, d8, 0) \
+	A = temp8; \
+DONE
+
+#define RST(num) \
+	PUSH_STACK_16(PC); \
+	PC = (num) * 8; \
 DONE
 
 #define RZ() \
-    printf("RZ unimplemented\n"); \
-    assert(false); // TODO \
+    if (F_Z) { PC = POP_STACK_16(); } \
 DONE
 
 #define RET() \
-    printf("RET unimplemented\n"); \
-    assert(false); // TODO \
+    PC = POP_STACK_16(); \
 DONE
 
-#define JZ(X) \
-    printf("JZ unimplemented\n"); \
-    assert(false); // TODO \
+#define JZ(a16) \
+    PC = F_Z ? a16 : PC + 2; \
 DONE
 
-#define CZ(X) \
-    printf("CZ unimplemented\n"); \
-    assert(false); // TODO \
+#define CZ(a16) \
+    if (F_Z) { CALL(a16) } else { PC += 2; } \
 DONE
 
-#define CALL(X) \
-    printf("CALL unimplemented\n"); \
-    assert(false); // TODO \
+#define CALL(a16) \
+    PUSH_STACK_16(PC + 2); \
+	  PC = a16; \
 DONE
 
-#define ACI(X) \
-    printf("ACI unimplemented\n"); \
-    assert(false); // TODO \
+#define ACI(d8) \
+  DO_ADD(A, d8, !!F_C); \
+  A = temp8; \
 DONE
 
 #define RNC() \
-    printf("RNC unimplemented\n"); \
-    assert(false); // TODO \
+    if (!F_C) { PC = POP_STACK_16(); } \
 DONE
 
-#define JNC(X) \
-    printf("JNC unimplemented\n"); \
-    assert(false); // TODO \
+#define JNC(a16) \
+    PC = !F_C ? a16 : PC + 2; \
 DONE
 
-#define OUT(X) \
-    printf("OUT unimplemented\n"); \
-    assert(false); // TODO \
+#define OUT(d8) \
+    handle_out(d8, A); \
 DONE
 
-#define CNC(X) \
-    printf("CNC unimplemented\n"); \
-    assert(false); // TODO \
+#define CNC(a16) \
+    if (!F_C) { CALL(a16) } else { PC += 2; } \
 DONE
 
-#define SUI(X) \
-    printf("SUI unimplemented\n"); \
-    assert(false); // TODO \
+#define SUI(d8) \
+	DO_SUB(A, d8, 0); \
+	A = temp8; \
 DONE
 
 #define RC() \
-    printf("RC unimplemented\n"); \
-    assert(false); // TODO \
+    if (F_C) { PC = POP_STACK_16(); } \
 DONE
 
-#define JC(X) \
-    printf("JC unimplemented\n"); \
-    assert(false); // TODO \
+#define JC(a16) \
+    PC = F_C ? a16 : PC + 2; \
 DONE
 
-#define IN(X) \
-    printf("IN unimplemented\n"); \
-    assert(false); // TODO \
+uint8_t handle_in(uint8_t dev) {
+	switch (dev) {
+		case 16:
+			return has_keyboard_input() ? 0x03 : 0x02;
+		case 17: {
+			char ret = has_keyboard_input() ? read_keyboard_input() : '\0';
+			return ret;
+		}
+    case 255:
+      return 0;
+		default:
+			printf("Invalid device read %02X\n", dev);
+      return 0;
+	}
+}
+
+#define IN(dev) \
+	A = handle_in(dev); \
 DONE
 
-#define CC(X) \
-    printf("CC unimplemented\n"); \
-    assert(false); // TODO \
+#define CC(a16) \
+    if (F_C) { CALL(a16) } else { PC += 2; } \
 DONE
 
-#define SBI(X) \
-    printf("SBI unimplemented\n"); \
-    assert(false); // TODO \
+#define SBI(d8) \
+    DO_SUB(A, d8, !!F_C) \
+	  A = temp8; \
 DONE
 
 #define RPO() \
-    printf("RPO unimplemented\n"); \
-    assert(false); // TODO \
+    if (!F_P) { PC = POP_STACK_16(); } \
 DONE
 
-#define JPO(X) \
-    printf("JPO unimplemented\n"); \
-    assert(false); // TODO \
+#define JPO(a16) \
+    PC = !F_P ? a16 : PC + 2; \
 DONE
 
 #define XTHL() \
-    printf("XTHL unimplemented\n"); \
-    assert(false); // TODO \
+    temp16 = POP_STACK_16(); \
+	PUSH_STACK_16(HL); \
+	HL = temp16; \
 DONE
 
-#define CPO(X) \
-    printf("CPO unimplemented\n"); \
-    assert(false); // TODO \
+#define CPO(a16) \
+    if (!F_P) { CALL(a16) } else { PC += 2; } \
 DONE
 
-#define ANI(X) \
-    printf("ANI unimplemented\n"); \
-    assert(false); // TODO \
+#define ANI(d8) \
+	temp8 = d8; \
+    F_A = (temp8 | A) & 0x08; \
+	A &= temp8; \
+	F_C = 0; \
+	F_SZP(A); \
 DONE
 
 #define RPE() \
-    printf("RPE unimplemented\n"); \
-    assert(false); // TODO \
+    if (F_P) { PC = POP_STACK_16(); } \
 DONE
 
 #define PCHL() \
-    printf("PCHL unimplemented\n"); \
-    assert(false); // TODO \
+    PC = HL; \
 DONE
 
-#define JPE(X) \
-    printf("JPE unimplemented\n"); \
-    assert(false); // TODO \
+#define JPE(a16) \
+    PC = F_P ? a16 : PC + 2; \
 DONE
 
 #define XCHG() \
-    printf("XCHG unimplemented\n"); \
-    assert(false); // TODO \
+    temp16 = DE; \
+	DE = HL; \
+	HL = temp16; \
 DONE
 
 #define CPE(X) \
-    printf("CPE unimplemented\n"); \
-    assert(false); // TODO \
+    if (F_P) { CALL(a16) } else { PC += 2; } \
 DONE
 
-#define XRI(X) \
-    printf("XRI unimplemented\n"); \
-    assert(false); // TODO \
+#define XRI(d8) \
+    A ^= d8; \
+	F_C = F_A = 0; \
+	F_SZP(A); \
 DONE
 
 #define RP() \
-    printf("RP unimplemented\n"); \
-    assert(false); // TODO \
+    if (!F_S) { PC = POP_STACK_16(); } \
 DONE
 
-#define JP(X) \
-    printf("JP unimplemented\n"); \
-    assert(false); // TODO \
+#define JP(a16) \
+    PC = !F_S ? a16 : PC + 2; \
 DONE
 
 #define DI() \
-    printf("DI unimplemented\n"); \
-    assert(false); // TODO \
+    INTE = 0; \
 DONE
 
-#define CP(X) \
-    printf("CP unimplemented\n"); \
-    assert(false); // TODO \
+#define CP(a16) \
+    if (!F_S) { CALL(a16) } else { PC += 2; } \
 DONE
 
-#define ORI(X) \
-    printf("ORI unimplemented\n"); \
-    assert(false); // TODO \
+#define ORI(d8) \
+	A |= d8; \
+	F_A = F_C = 0; \
+	F_SZP(A); \
 DONE
 
 #define RM() \
-    printf("RM unimplemented\n"); \
-    assert(false); // TODO \
+    if (F_S) { PC = POP_STACK_16(); } \
 DONE
 
 #define SPHL() \
-    printf("SPHL unimplemented\n"); \
-    assert(false); // TODO \
+    SP = HL; \
 DONE
 
-#define JM(X) \
-    printf("JM unimplemented\n"); \
-    assert(false); // TODO \
+#define JM(a16) \
+    PC = F_S ? a16 : PC + 2; \
 DONE
 
 #define EI() \
-    printf("EI unimplemented\n"); \
-    assert(false); // TODO \
+    INTE = 1; \
 DONE
 
-#define CM(X) \
-    printf("CM unimplemented\n"); \
-    assert(false); // TODO \
+#define CM(a16) \
+    if (F_S) { CALL(a16) } else { PC += 2; } \
 DONE
 
-#define CPI(X) \
-    printf("CPI unimplemented\n"); \
-    assert(false); // TODO \
+#define CPI(d8) \
+	DO_SUB(A, d8, 0) \
 DONE
 

@@ -1,3 +1,7 @@
+#include "terminal.h"
+
+#include <stdio.h>
+
 #define VGA_PIXEL_BASE_ADDR 0x8000000
 #define VGA_CHAR_BASE_ADDR 0x9000000
 #define VGA_WIDTH 320
@@ -12,21 +16,27 @@ static int term_x = 0;
 static int term_y = 0;
 
 void write_pixel(int x, int y, short colour) {
+#ifndef __linux__
   volatile short *vga_addr =
       (volatile short *)(VGA_PIXEL_BASE_ADDR + (y << 10) + (x << 1));
   *vga_addr = colour;
+#endif
 }
 
 void write_char(int x, int y, char c) {
+#ifndef __linux__
   volatile char *char_addr =
       (volatile char *)(VGA_CHAR_BASE_ADDR + (y << 7) + x);
   *char_addr = c;
+#endif
 }
 
 char char_at(int x, int y) {
+#ifndef __linux__
   volatile char *char_addr =
       (volatile char *)(VGA_CHAR_BASE_ADDR + (y << 7) + x);
   return *char_addr;
+#endif
 }
 
 void terminal_scroll_buffer(void) {
@@ -59,7 +69,11 @@ void terminal_clear(void) {
 }
 
 void terminal_out(char c) {
-  if (c == '\r' || term_x == TERM_WIDTH) {
+#ifdef __linux__
+  printf("%c", c);
+  fflush(stdout);
+#else
+  if (c == '\r' || c == '\n' || term_x == TERM_WIDTH) {
     term_x = 0;
     term_y++;
 
@@ -69,25 +83,27 @@ void terminal_out(char c) {
     }
   }
 
-  if (c != '\r') {
+  if (c != '\r' && c != '\n') {
     write_char(term_x, term_y, c);
     term_x++;
   }
+#endif
 }
 
-int _main(void) {
-  terminal_clear();
-
-  while (1) {
-    char x = 'a';
-    while (x) {
-      terminal_out(x);
-      x++;
-      for (int i = 0; i < 100000; i++) {
-        asm("");
-      }
-    }
-  }
-
-  return 0;
+void handle_out(uint8_t dev, uint8_t A) {
+  // printf("Printing %02X to dev=%02X\n", A, dev);
+	if (dev == 0x11) {
+		char c = A & 0x7F;
+		if ((' ' <= c && c <= '~') || c == '\r' || c == '\n') {
+			terminal_out(c);
+		}
+	}
 }
+
+void terminal_out_str(char *str) {
+	while (*str) {
+		terminal_out(*str);
+		str++;
+	}
+}
+
