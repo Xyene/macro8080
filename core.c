@@ -7,8 +7,9 @@
 #endif
 
 #ifdef CPM
-#include "memory_cputest.h"
-// #include "memory_8080exer.h"
+//#include "memory_cputest.h"
+#include "memory_8080exer.h"
+//#include "memory_8080pre.h"
 #else
 #include "memory_basic.h"
 #endif

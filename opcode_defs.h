@@ -62,7 +62,7 @@ DONE
 DONE
 
 #define DCR(X) \
-  F_A = !((X & 0xF) == 0); \
+  F_A = (X & 0xF) != 0; \
 	X--; \
 	F_SZP(X); \
 DONE
@@ -149,30 +149,23 @@ DONE
 DONE
 
 #define HLT() \
-    printf("HLT unimplemented\n"); \
-    assert(false); // TODO \
+    printf("Processor halted.\n"); \
+    return; \
 DONE
 
-// TODO: why is our original version of DO_ADD and DO_SUB wrong?
-/*
-	temp8 = by; \
-	uint16_t res16 = ((uint16_t) what) + temp8 + carry; \
-	F_C = !!(res16 & 0x100); \
-	F_A = ((what & 0xF) + (temp8 & 0xF) + carry) & 0x10; \
-	temp8 = res16; \
-	F_SZP(temp8); \
-	*/
-#define DO_ADD(what, _by, carry) \
+#define DO_ADD(what, by, carry) \
 { \
-	uint8_t by = _by; \
-	uint16_t carry_val = carry ? 1 : 0; \
-	uint16_t res16 = what + by + carry_val; \
-	uint8_t res8 = res16 & 0xFF; \
-	F_C = !!(res16 & 0x100); \
-	F_A = ((what & 0xF) + (by & 0xF) + carry_val) & 0x10; \
-	F_SZP(res8); \
-	temp8 = res8; \
+	temp8 = by; \
+	temp16 = what + temp8 + carry; \
+	F_C = !!(temp16 & 0x100); \
+	F_A = ((what & 0xF) + (temp8 & 0xF) + carry) & 0x10; \
+	temp8 = temp16; \
+	F_SZP(temp8); \
 }
+
+#define DO_SUB(minu, subt, borrow) \
+  DO_ADD(minu, (~subt) & 0xFF, !borrow) \
+  F_C = !F_C;
 
 #define DAA() \
 { \
@@ -198,32 +191,9 @@ DONE
 DONE
 
 #define ADC(X) \
-    DO_ADD(A, X, !!F_C) \
+  DO_ADD(A, X, !!F_C) \
 	A = temp8; \
 DONE
-
-/*
-
-	uint8_t by = ~_by; \
-	uint16_t res16 = ((uint16_t) what) + by + !borrow; \
-	temp8 = res16; \
-	F_C = !(res16 & 0x100); \
-	F_A = ((what & 0xF) + (by & 0xF) + !borrow) & 0x10; \
-	F_SZP(temp8); \
-
-	*/
-#define DO_SUB(minu, subt, borrow) \
-{ \
-	uint16_t subt_ones = (~subt) & 0xFF; \
-	\
-	uint16_t res16 = minu + subt_ones + (borrow ? 0 : 1); \
-	uint8_t res8 = res16 & 0xFF; \
-	\
-	F_C = !(res16 & 0x100); \
-	F_A = ((minu & 0xF) + (subt_ones & 0xF) + (borrow ? 0 : 1)) & 0x10; \
-	F_SZP(res8); \
-	temp8 = res8; \
-}
 
 #define SUB(X) \
 	DO_SUB(A, X, 0) \
@@ -231,19 +201,19 @@ DONE
 DONE
 
 #define SBB(X) \
-    DO_SUB(A, X, !!F_C) \
+  DO_SUB(A, X, !!F_C) \
 	A = temp8; \
 DONE
 
 #define ANA(X) \
-    F_A = (X | A) & 0x08; \
+  F_A = (X | A) & 0x08; \
 	A &= X; \
 	F_C = 0; \
 	F_SZP(A); \
 DONE
 
 #define XRA(X) \
-    A ^= X; \
+  A ^= X; \
 	F_C = F_A = 0; \
 	F_SZP(A); \
 DONE
@@ -410,7 +380,7 @@ DONE
 
 #define ANI(d8) \
 	temp8 = d8; \
-    F_A = (temp8 | A) & 0x08; \
+  F_A = (temp8 | A) & 0x08; \
 	A &= temp8; \
 	F_C = 0; \
 	F_SZP(A); \
@@ -425,11 +395,11 @@ DONE
 DONE
 
 #define JPE(a16) \
-    PC = F_P ? a16 : PC + 2; \
+  PC = F_P ? a16 : PC + 2; \
 DONE
 
 #define XCHG() \
-    temp16 = DE; \
+  temp16 = DE; \
 	DE = HL; \
 	HL = temp16; \
 DONE
@@ -439,7 +409,7 @@ DONE
 DONE
 
 #define XRI(d8) \
-    A ^= d8; \
+  A ^= d8; \
 	F_C = F_A = 0; \
 	F_SZP(A); \
 DONE
