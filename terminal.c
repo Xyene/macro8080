@@ -75,6 +75,7 @@ void terminal_out(char c) {
   fflush(stdout);
 #else
   if (c == '\r' || c == '\n' || term_x == TERM_WIDTH) {
+    write_char(term_x, term_y, ' ');  // Clear cursor, if any
     term_x = 0;
     term_y++;
 
