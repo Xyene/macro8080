@@ -12,16 +12,33 @@
         <type>C Program</type>
         <source_files>
             <source_file filepath="true">terminal.c</source_file>
+            <source_file filepath="true">core.c</source_file>
+            <source_file filepath="true">keyboard.c</source_file>
+            <source_file filepath="true">timer_handler.s</source_file>
         </source_files>
         <options>
             <compiler_flags>-g -O1 -ffunction-sections -fverbose-asm -fno-inline -mno-cache-volatile</compiler_flags>
             <emulate_unimpl_instructions>true</emulate_unimpl_instructions>
             <use_small_c_library>false</use_small_c_library>
         </options>
-        <linker_sections type="Basic">
-            <linker_section name=".text">
+        <linker_sections type="Exceptions">
+            <linker_section name=".reset">
                 <memory_device>SDRAM.s1</memory_device>
                 <base_address>0x00000000</base_address>
+                <end_address>0x0000001F</end_address>
+                <required_section/>
+                <fixed_base_address/>
+            </linker_section>
+            <linker_section name=".exceptions">
+                <memory_device>SDRAM.s1</memory_device>
+                <base_address>0x00000020</base_address>
+                <end_address>0x000001FF</end_address>
+                <required_section/>
+                <fixed_base_address/>
+            </linker_section>
+            <linker_section name=".text">
+                <memory_device>SDRAM.s1</memory_device>
+                <base_address>0x00000200</base_address>
                 <end_address>0x03FFFFFF</end_address>
                 <required_section/>
             </linker_section>

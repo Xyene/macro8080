@@ -7,9 +7,8 @@
 #endif
 
 #ifdef CPM
-//#include "memory_cputest.h"
-#include "memory_8080exer.h"
-//#include "memory_8080pre.h"
+#include "memory_cputest.h"
+// #include "memory_8080exer.h"
 #else
 #include "memory_basic.h"
 #endif
@@ -641,6 +640,10 @@ RST_7:
   RST(7)
 }
 
+#ifndef __unix__
+void initialize_interrupts(void);
+#endif
+
 int main(void) {
 #ifdef __unix__
   struct termios term;
@@ -653,6 +656,10 @@ int main(void) {
   if (tcsetattr(fileno(stdin), TCSAFLUSH, &term)) {
     return 1;
   }
+#endif
+
+#ifndef __unix__
+  initialize_interrupts();
 #endif
 
   terminal_clear();
