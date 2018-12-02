@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ctype.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef __unix__

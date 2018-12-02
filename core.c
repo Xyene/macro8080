@@ -42,8 +42,8 @@ void run_forever(void) {
 
   uint8_t F_S, F_Z, F_P, F_C, F_A;
 
-#define F                                                                \
-  ((uint8_t)(!!F_C | (1 << 1) | (!!F_P << 2) | (0 << 3) | (!!F_A << 4) | \
+#define F                                                                      \
+  ((uint8_t)(!!F_C | (1 << 1) | (!!F_P << 2) | (0 << 3) | (!!F_A << 4) |       \
              (0 << 5) | (!!F_Z << 6) | (!!F_S << 7)))
 
   uint16_t PC, SP;
@@ -65,7 +65,7 @@ void run_forever(void) {
   PC = 0;
 #endif
 
-  static void* ops[] = {
+  static void *ops[] = {
       &&NOP,      &&LXI_BC_d16, &&STAX_B,     &&INX_BC,     &&INR_B,
       &&DCR_B,    &&MVI_B_d8,   &&RLC,        &&NOP,        &&DAD_BC,
       &&LDAX_B,   &&DCX_BC,     &&INR_C,      &&DCR_C,      &&MVI_C_d8,
@@ -126,12 +126,14 @@ void run_forever(void) {
 #ifdef CPM
     if (PC == 0x05) {
       switch (C) {
-        case 2:  // C_WRITE
-          if (E) putchar((char)E);
+        case 2: // C_WRITE
+          if (E)
+            putchar((char)E);
           break;
-        case 9:  // C_WRITESTR
+        case 9: // C_WRITESTR
           for (uint16_t addr = (D << 8) | E; memory[addr] != '$'; addr++) {
-            if (memory[addr]) putchar((char)memory[addr]);
+            if (memory[addr])
+              putchar((char)memory[addr]);
           }
           break;
       }
@@ -145,11 +147,11 @@ void run_forever(void) {
     // printf("PC:%04X opcode:%02X SP:%04X A:%02X B:%02X C:%02X D:%02X E:%02X
     // H:%02X L:%02X flags:%02X INTE:%01X\n", PC, opcode, SP, A, B, C, D, E, H,
     // L, F, INTE);
-    goto* ops[opcode];
+    goto *ops[opcode];
   done_opcode:;
   } while (1);
 
-  // What follows is machine-generated code.
+// What follows is machine-generated code.
 NOP:
   NOP()
 LXI_BC_d16:
