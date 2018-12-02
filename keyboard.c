@@ -1,13 +1,4 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#ifdef __linux__
-#include <sys/select.h>
-#include <termio.h>
-#include <time.h>
-#include <unistd.h>
-#endif
+#include "keyboard.h"
 
 static unsigned char ps2_buffer[3];
 static unsigned char ascii_ptr = 0;
@@ -125,8 +116,24 @@ static unsigned char ps2_to_ascii[0x200] = {
 static int is_shift = 0;
 static char last_input = 0;
 
+uint8_t handle_in(uint8_t dev) {
+  switch (dev) {
+    case 16:
+      return has_keyboard_input() ? 0x03 : 0x02;
+    case 17: {
+      char ret = has_keyboard_input() ? read_keyboard_input() : '\0';
+      return ret;
+    }
+    case 255:
+      return 0;
+    default:
+      printf("Invalid device read %02X\n", dev);
+      return 0;
+  }
+}
+
 char read_keyboard_input(void) {
-#ifdef __linux__
+#ifdef __unix__
   char ret = toupper(getchar());
   return ret == '\n' ? '\r' : ret;
 #else
@@ -137,7 +144,7 @@ char read_keyboard_input(void) {
 }
 
 int has_keyboard_input(void) {
-#ifdef __linux__
+#ifdef __unix__
   struct timeval timeout;
   timeout.tv_sec = 0;
   timeout.tv_usec = 10;

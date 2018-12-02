@@ -14,6 +14,7 @@
 
 static int term_x = 0;
 static int term_y = 0;
+static bool cursor = false;
 
 void write_pixel(int x, int y, short colour) {
 #ifndef __linux__
@@ -92,18 +93,22 @@ void terminal_out(char c) {
 
 void handle_out(uint8_t dev, uint8_t A) {
   // printf("Printing %02X to dev=%02X\n", A, dev);
-	if (dev == 0x11) {
-		char c = A & 0x7F;
-		if ((' ' <= c && c <= '~') || c == '\r' || c == '\n') {
-			terminal_out(c);
-		}
-	}
+  if (dev == 0x11) {
+    char c = A & 0x7F;
+    if ((' ' <= c && c <= '~') || c == '\r' || c == '\n') {
+      terminal_out(c);
+    }
+  }
 }
 
 void terminal_out_str(char *str) {
-	while (*str) {
-		terminal_out(*str);
-		str++;
-	}
+  while (*str) {
+    terminal_out(*str);
+    str++;
+  }
 }
 
+void toggle_underscore(void) {
+  cursor ^= true;
+  write_char(term_x, term_y, cursor ? '_' : ' ');
+}
