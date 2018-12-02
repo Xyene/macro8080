@@ -12,6 +12,12 @@
 #include <unistd.h>
 #endif
 
+#define OVERRIDE_INPUT
+
+#ifdef OVERRIDE_INPUT
+#include "input_civilwar.h"
+#endif
+
 uint8_t handle_in(uint8_t dev);
 char read_keyboard_input(void);
 int has_keyboard_input(void);

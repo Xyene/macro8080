@@ -1,7 +1,7 @@
 #include "keyboard.h"
 
 static unsigned char ps2_buffer[3];
-static unsigned char ascii_ptr = 0;
+static unsigned char ascii = 0;
 static unsigned char ascii_buffer[4096];
 
 static unsigned char ps2_to_ascii[0x200] = {
@@ -133,6 +133,14 @@ uint8_t handle_in(uint8_t dev) {
 }
 
 char read_keyboard_input(void) {
+#ifdef OVERRIDE_INPUT
+  if (*input_override) {
+    char ret = *input_override;
+    input_override++;
+    return ret;
+  }
+#endif
+
 #ifdef __unix__
   char ret = toupper(getchar());
   return ret == '\n' ? '\r' : ret;
@@ -144,6 +152,10 @@ char read_keyboard_input(void) {
 }
 
 int has_keyboard_input(void) {
+#ifdef OVERRIDE_INPUT
+  if (*input_override) return 1;
+#endif
+
 #ifdef __unix__
   struct timeval timeout;
   timeout.tv_sec = 0;
@@ -160,11 +172,11 @@ int has_keyboard_input(void) {
 #else
   if (last_input) return 1;
 
-  volatile int *PS2_ptr = (int *)0xFF200100;
-  while ((*PS2_ptr) & 0x8000 /* RVALID */) {
+  volatile int *PS2 = (int *)0xFF200100;
+  while ((*PS2) & 0x8000 /* RVALID */) {
     ps2_buffer[0] = ps2_buffer[1];
     ps2_buffer[1] = ps2_buffer[2];
-    ps2_buffer[2] = (*PS2_ptr) & 0xFF;
+    ps2_buffer[2] = (*PS2) & 0xFF;
 
     if (ps2_buffer[1] == 0xAA && ps2_buffer[2] == 0x00) {
       printf("Inserted keyboard!\n");
