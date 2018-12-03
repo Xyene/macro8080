@@ -3,7 +3,7 @@
 .equ TIMER0_CONTROL, 4
 .equ TIMER0_PERIODL, 8
 .equ TIMER0_PERIODH, 12
-.equ TICKS_PER_SEC, 100000000
+.equ TICKS_PER_SEC, 50000000
 
 .text
 .global initialize_interrupts
