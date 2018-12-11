@@ -38,6 +38,7 @@ char char_at(int x, int y) {
       (volatile char *)(VGA_CHAR_BASE_ADDR + (y << 7) + x);
   return *char_addr;
 #endif
+  return '\0';
 }
 
 void terminal_scroll_buffer(void) {

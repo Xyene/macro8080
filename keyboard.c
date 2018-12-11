@@ -1,12 +1,9 @@
 #include "keyboard.h"
 
-static unsigned char ps2_buffer[3];
-static unsigned char ascii = 0;
-static unsigned char ascii_buffer[4096];
-
+#ifndef __unix__
 static unsigned char ps2_to_ascii[0x200] = {
-        [0x066] = 0x08, // Backspace ("backspace" key)
-        [0x166] = 0x08, // Backspace ("backspace" key)
+        [0x066] = '_',  // Backspace ("backspace" key)
+        [0x166] = '_',  // Backspace ("backspace" key)
         [0x00d] = 0x09, // Horizontal Tab
         [0x10d] = 0x09, // Horizontal Tab
         [0x05a] = 0x0d, // Carriage return ("enter" key)
@@ -113,8 +110,12 @@ static unsigned char ps2_to_ascii[0x200] = {
         [0x171] = 0x7f, // (Delete OR DEL on numeric keypad)
 };
 
+static bool keydown[0x100];
+
 static int is_shift = 0;
 static char last_input = 0;
+static bool is_release = false;
+#endif
 
 uint8_t handle_in(uint8_t dev) {
   switch (dev) {
@@ -187,7 +188,6 @@ int has_keyboard_input(void) {
       //	   ps2_buffer[2]);
     }
 
-    int shift_pressed_now = 0;
     switch (ps2_buffer[2]) {
       case 0x00: // Key detection error or internal buffer overrun
       case 0xEE: // Response to echo command
@@ -201,26 +201,16 @@ int has_keyboard_input(void) {
       case 0xAA: // Self test passed or keyboard connected
         printf("Keyboard connected!\n");
         continue;
-      case 0x59:
-      case 0x12:
-        is_shift = 1;
-        shift_pressed_now = 1;
-        break;
-    }
-
-    switch (ps2_buffer[1]) {
       case 0xF0:
-        if (shift_pressed_now) {
-          // printf("Shift depressed\n");
-          is_shift = 0;
-        } else {
-          char c = ps2_to_ascii[ps2_buffer[2] | (is_shift << 8)];
-          // printf("	Typed '%c' (%02X)\n", c, (int) c);
-          last_input = c;
-          return 1;
+        is_release = true;
+        continue;
+      default:
+        keydown[ps2_buffer[2]] = !is_release;
+        if (!is_release) {
+          last_input = ps2_to_ascii[ps2_buffer[2] |
+                                    ((keydown[0x12] | keydown[0x59]) << 8)];
         }
-        break;
-      default: // There's a bunch more codes that I don't think are necessary
+        is_release = false;
         break;
     }
   }

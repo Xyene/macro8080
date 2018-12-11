@@ -5,7 +5,7 @@
 
 #define F_SZP(X)                                                               \
   F_S = X & 0x80;                                                              \
-  F_Z = X == 0;                                                                \
+  F_Z = !X;                                                                    \
   F_P = 1 - __builtin_parity(X);
 
 #define PUSH_STACK_8(val) memory[--SP] = val;
@@ -14,14 +14,15 @@
   PUSH_STACK_8((val) >> 8);                                                    \
   PUSH_STACK_8((val)&0xFF);
 
-#define POP_STACK_8() (memory[SP++])
+#define POP_STACK_8()                                                          \
+  ({                                                                           \
+    uint16_t temp = SP++;                                                      \
+    memory[temp];                                                              \
+  })
 
-#define POP_STACK_16()                                                         \
-  (((uint16_t)POP_STACK_8()) | (((uint16_t)POP_STACK_8()) << 8))
+#define POP_STACK_16() (POP_STACK_8() | (POP_STACK_8() << 8))
 
-#define NOP()                                                                  \
-  { ; }                                                                        \
-  DONE
+#define NOP() DONE
 
 #define LXI(WX, d16)                                                           \
   { WX = d16; }                                                                \
@@ -45,7 +46,7 @@
 
 #define DCR(X)                                                                 \
   {                                                                            \
-    F_A = (X & 0xF) != 0;                                                      \
+    F_A = !!(X & 0xF);                                                         \
     X--;                                                                       \
     F_SZP(X);                                                                  \
   }                                                                            \
@@ -66,7 +67,7 @@
 
 #define DAD(WX)                                                                \
   {                                                                            \
-    F_C = !!(((((uint32_t)HL) & 0xFFFF) + WX) & 0x10000);                      \
+    F_C = !!(((HL & 0xFFFF) + WX) & 0x10000);                                  \
     HL += WX;                                                                  \
   }                                                                            \
   DONE
@@ -154,65 +155,55 @@
   DONE
 
 #define DO_ADD(what, by, carry)                                                \
-  {                                                                            \
+  ({                                                                           \
     temp8 = by;                                                                \
     temp16 = what + temp8 + carry;                                             \
     F_C = !!(temp16 & 0x100);                                                  \
     F_A = ((what & 0xF) + (temp8 & 0xF) + carry) & 0x10;                       \
     temp8 = temp16;                                                            \
     F_SZP(temp8);                                                              \
-  }
+    temp8;                                                                     \
+  })
 
 #define DO_SUB(minu, subt, borrow)                                             \
-  {                                                                            \
-    DO_ADD(minu, (~subt) & 0xFF, !borrow)                                      \
+  ({                                                                           \
+    temp8 = DO_ADD(minu, (~subt) & 0xFF, !borrow);                             \
     F_C = !F_C;                                                                \
-  }
+    temp8;                                                                     \
+  })
 
 #define DAA()                                                                  \
   {                                                                            \
-    uint add = 0;                                                              \
+    uint8_t add = 0;                                                           \
     if (((A & 0xF) > 9) || !!F_A) {                                            \
       add |= 0x06;                                                             \
     }                                                                          \
-    int carry = !!F_C;                                                         \
-    if (((A & 0xF0) > 0x90) || (((A & 0xF0) >= 0x90) && ((A & 0xF) > 9)) ||    \
-        !!F_C) {                                                               \
+                                                                               \
+    bool carry = false;                                                        \
+    if ((A >> 4) > 9 || ((A >> 4) >= 9 && (A & 0xF) > 9) || !!F_C) {           \
       add |= 0x60;                                                             \
-      carry = 1;                                                               \
+      carry = true;                                                            \
     }                                                                          \
-    DO_ADD(A, add, 0);                                                         \
-    A = temp8;                                                                 \
+                                                                               \
+    A = DO_ADD(A, add, 0);                                                     \
     F_C = carry;                                                               \
   }                                                                            \
   DONE
 
 #define ADD(X)                                                                 \
-  {                                                                            \
-    DO_ADD(A, X, 0)                                                            \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_ADD(A, X, 0); }                                                     \
   DONE
 
 #define ADC(X)                                                                 \
-  {                                                                            \
-    DO_ADD(A, X, !!F_C)                                                        \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_ADD(A, X, !!F_C); }                                                 \
   DONE
 
 #define SUB(X)                                                                 \
-  {                                                                            \
-    DO_SUB(A, X, 0)                                                            \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_SUB(A, X, 0); }                                                     \
   DONE
 
 #define SBB(X)                                                                 \
-  {                                                                            \
-    DO_SUB(A, X, !!F_C)                                                        \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_SUB(A, X, !!F_C); }                                                 \
   DONE
 
 #define ANA(X)                                                                 \
@@ -241,7 +232,7 @@
   DONE
 
 #define CMP(X)                                                                 \
-  { DO_SUB(A, X, 0) }                                                          \
+  { DO_SUB(A, X, 0); }                                                         \
   DONE
 
 #define RNZ()                                                                  \
@@ -295,10 +286,7 @@
   DONE
 
 #define ADI(d8)                                                                \
-  {                                                                            \
-    DO_ADD(A, d8, 0)                                                           \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_ADD(A, d8, 0); }                                                    \
   DONE
 
 #define RST(num)                                                               \
@@ -342,10 +330,7 @@
   DONE
 
 #define ACI(d8)                                                                \
-  {                                                                            \
-    DO_ADD(A, d8, !!F_C);                                                      \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_ADD(A, d8, !!F_C); }                                                \
   DONE
 
 #define RNC()                                                                  \
@@ -375,10 +360,7 @@
   DONE
 
 #define SUI(d8)                                                                \
-  {                                                                            \
-    DO_SUB(A, d8, 0);                                                          \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_SUB(A, d8, 0); }                                                    \
   DONE
 
 #define RC()                                                                   \
@@ -408,10 +390,7 @@
   DONE
 
 #define SBI(d8)                                                                \
-  {                                                                            \
-    DO_SUB(A, d8, !!F_C)                                                       \
-    A = temp8;                                                                 \
-  }                                                                            \
+  { A = DO_SUB(A, d8, !!F_C); }                                                \
   DONE
 
 #define RPO()                                                                  \
@@ -561,5 +540,5 @@
   DONE
 
 #define CPI(d8)                                                                \
-  { DO_SUB(A, d8, 0) }                                                         \
+  { DO_SUB(A, d8, 0); }                                                        \
   DONE

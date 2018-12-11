@@ -8,4 +8,4 @@ clean:
 	rm -f i8080
 
 %.o: %.c
-	gcc -std=gnu99 -c $<
+	gcc -std=gnu99 -Wall -c $<

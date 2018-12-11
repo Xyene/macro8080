@@ -7,13 +7,17 @@
 #endif
 
 #ifdef CPM
-#include "memory_cputest.h"
-// #include "memory_8080exer.h"
+//#include "memory_cputest.h"
+#include "memory_8080exer.h"
 #else
 #include "memory_basic.h"
 #endif
 
-#define d8 memory[PC++]
+#define d8                                                                     \
+  ({                                                                           \
+    uint16_t temp = PC++;                                                      \
+    memory[temp];                                                              \
+  })
 #define a16 (d8 | (d8 << 8))
 #define d16 a16
 
@@ -26,8 +30,8 @@ void run_forever(void) {
     uint8_t reg[2];
   } regpair_t;
 
-  uint8_t A;
-  regpair_t bc, de, hl;
+  register uint8_t A;
+  register regpair_t bc, de, hl;
 
 #define B bc.reg[1]
 #define C bc.reg[0]
@@ -40,17 +44,17 @@ void run_forever(void) {
 #define HL hl.pair
 #define M memory[HL]
 
-  uint8_t F_S, F_Z, F_P, F_C, F_A;
+  register uint8_t F_S, F_Z, F_P, F_C, F_A;
 
 #define F                                                                      \
-  ((uint8_t)(!!F_C | (1 << 1) | (!!F_P << 2) | (0 << 3) | (!!F_A << 4) |       \
+  ((uint8_t)((!!F_C) | (1 << 1) | (!!F_P << 2) | (0 << 3) | (!!F_A << 4) |     \
              (0 << 5) | (!!F_Z << 6) | (!!F_S << 7)))
 
-  uint16_t PC, SP;
-  uint8_t INTE;
+  register uint16_t PC, SP;
+  __attribute__((unused)) uint8_t INTE;
 
-  uint16_t temp16, temp16_s;
-  uint8_t temp8, temp8_2;
+  uint16_t temp16;
+  uint8_t temp8;
 
   BC = DE = HL = 0;
   A = 0;

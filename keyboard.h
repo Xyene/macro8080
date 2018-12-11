@@ -2,6 +2,7 @@
 
 #include <ctype.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -11,8 +12,6 @@
 #include <time.h>
 #include <unistd.h>
 #endif
-
-#define OVERRIDE_INPUT
 
 #ifdef OVERRIDE_INPUT
 #include "input_civilwar.h"

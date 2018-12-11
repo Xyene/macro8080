@@ -1,3 +1,4 @@
+#ifdef OVERRIDE_INPUT
 static char *input_override =
     "\r\rY\r"
     "2 PRINT TAB(26) \"CIVIL WAR\"\r"
@@ -405,3 +406,4 @@ static char *input_override =
     "3990  PRINT \"ON ATLANTA AND DEALT THE DEATH BLOW TO THE CONFEDERACY.\"\r"
     "4000  GOTO 1150\r"
     "4010  END\r";
+#endif
