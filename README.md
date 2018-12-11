@@ -22,7 +22,7 @@ $ ./i8080
 
 By default, 8K Altair BASIC will load. Several macro definitions control further behaviour if macro8080 is built with them:
 
-* `CPM` will load a CPM test ROM and build CPM BIOS functions
+* `CPM` will load a CPM test ROM and build CP/M BIOS functions
 * `OVERRIDE_INPUT` will automatically feed the source code of Civil War into BASIC (useful for demoing on a DE1-SoC)
 
 ## How does it work?
