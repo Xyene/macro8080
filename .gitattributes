@@ -1,2 +1,3 @@
 memory_* linguist-generated=true
 input_* linguist-generated=true
+opcode_defs.h linguist-language=C
